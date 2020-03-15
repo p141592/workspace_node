@@ -1,36 +1,64 @@
 version: '3.7'
 
 services:
-   gitlab:
+  gitlab:
       restart: always
       image: sameersbn/gitlab:12.7.7
-      ports:
-        - "8002:8002"
       env_file: 
         .env
       volumes:
         - /opt/gitlab/:/home/git/data:Z
       network_mode: "host"
   
-   nexus:
+  nexus:
       restart: always
       image: sonatype/nexus
       volumes:
         - "/opt/nexus/:/sonatype-work"
-      ports:
-        - 8081:8081
       env_file: 
         .env
       network_mode: "host"
 
-   teamcity:
-    restart: always
-    image: jetbrains/teamcity-server
-    ports:
-      - 8111:8111
-    env_file: 
-        .env
-    volumes:
-      - /opt/teamcity/data_dir:/data/teamcity_server/datadir
-      - /opt/teamcity/log_dir:/opt/teamcity/logs
-    network_mode: "host"
+  teamcity:
+      restart: always
+      image: jetbrains/teamcity-server
+      env_file: 
+          .env
+      volumes:
+        - /opt/teamcity/data_dir:/data/teamcity_server/datadir
+        - /opt/teamcity/log_dir:/opt/teamcity/logs
+      network_mode: "host"
+
+  teamcity-agent:
+      image: jetbrains/teamcity-agent
+      environment:
+        - SERVER_URL=http://10.10.0.3:8111
+        - AGENT_NAME=regular_agent
+      network_mode: "host"
+
+  zabbix-server:  
+      image: zabbix/zabbix-server-pgsql:ubuntu-latest
+      restart: always
+      env_file:
+        - .env_zbx
+      volumes:
+        - /etc/localtime:/etc/localtime:ro
+        - /opt/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
+        - /opt/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
+        - /opt/zabbix/export:/var/lib/zabbix/export:rw
+        - /opt/zabbix/modules:/var/lib/zabbix/modules:ro
+        - /opt/zabbix/enc:/var/lib/zabbix/enc:ro
+        - /opt/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+        - /opt/zabbix/mibs:/var/lib/zabbix/mibs:ro
+        - /opt/zabbix/snmptraps:/var/lib/zabbix/snmptraps:ro
+      network_mode: "host"
+
+  zabbix-web: 
+      image: zabbix/zabbix-web-nginx-pgsql:ubuntu-latest
+      restart: always
+      network_mode: "host"
+      env_file:
+        - .env_zbx_web
+      environment: 
+        ZBX_SERVER_HOST: 10.10.0.3
+        ZBX_MAXEXECUTIONTIME: 500
