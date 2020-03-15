@@ -1,6 +1,1 @@
-![scheme](docs/index.png)
-
-
-
-## gitlab-compose 
-
+![scheme](docs/scheme.png)
