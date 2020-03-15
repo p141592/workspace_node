@@ -1,0 +1,32 @@
+version: '3.7'
+
+services:
+   gitlab:
+      restart: always
+      image: sameersbn/gitlab:12.7.7
+      ports:
+        - "10080:80"
+        - "10022:22"
+      volumes:
+        - /opt/gitlab/:/home/git/data:Z
+      network_mode: "host"
+  
+   nexus:
+      restart: always
+      image: sonatype/nexus
+      volumes:
+        - "/opt/nexus/:/sonatype-work"
+      ports:
+        - 8081:8081
+      network_mode: "host"
+
+   teamcity:
+    restart: always
+    image: jetbrains/teamcity-server
+    ports:
+      - 8111:8111
+    volumes:
+      - /opt/teamcity/data_dir:/data/teamcity_server/datadir
+      - /opt/teamcity/log_dir:/opt/teamcity/logs
+    network_mode: "host"
+
