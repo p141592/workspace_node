@@ -6,6 +6,8 @@ services:
       image: sameersbn/gitlab:12.7.7
       ports:
         - "8002:8002"
+      env_file: 
+        .env
       volumes:
         - /opt/gitlab/:/home/git/data:Z
       network_mode: "host"
@@ -17,6 +19,8 @@ services:
         - "/opt/nexus/:/sonatype-work"
       ports:
         - 8081:8081
+      env_file: 
+        .env
       network_mode: "host"
 
    teamcity:
@@ -24,6 +28,8 @@ services:
     image: jetbrains/teamcity-server
     ports:
       - 8111:8111
+    env_file: 
+        .env
     volumes:
       - /opt/teamcity/data_dir:/data/teamcity_server/datadir
       - /opt/teamcity/log_dir:/opt/teamcity/logs
