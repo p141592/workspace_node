@@ -5,8 +5,7 @@ services:
       restart: always
       image: sameersbn/gitlab:12.7.7
       ports:
-        - "10080:80"
-        - "10022:22"
+        - "8002:8002"
       volumes:
         - /opt/gitlab/:/home/git/data:Z
       network_mode: "host"
