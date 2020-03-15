@@ -29,4 +29,3 @@ services:
       - /opt/teamcity/data_dir:/data/teamcity_server/datadir
       - /opt/teamcity/log_dir:/opt/teamcity/logs
     network_mode: "host"
-
