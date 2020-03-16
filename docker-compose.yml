@@ -1,13 +1,19 @@
 version: '3.7'
 
+volumes:
+  grafana_data: {}
+  prometheus_data: {}
+  gitlab_data: {}
+  teamcity_data: {}
+
 services:
   gitlab:
       restart: always
       image: sameersbn/gitlab:12.7.7
       env_file: 
-        .env
+        ./gitlab/env
       volumes:
-        - /opt/gitlab/:/home/git/data:Z
+        - gitlab_data:/home/git/data:Z
       network_mode: "host"
   
   nexus:
@@ -16,16 +22,14 @@ services:
       volumes:
         - "/opt/nexus/:/sonatype-work"
       env_file: 
-        .env
+        ./nexus/env
       network_mode: "host"
 
   teamcity:
       restart: always
       image: jetbrains/teamcity-server
-      env_file: 
-          .env
       volumes:
-        - /opt/teamcity/data_dir:/data/teamcity_server/datadir
+        - teamcity_data:/data/teamcity_server/datadir
         - /opt/teamcity/log_dir:/opt/teamcity/logs
       network_mode: "host"
 
@@ -33,5 +37,65 @@ services:
       image: jetbrains/teamcity-agent
       environment:
         - SERVER_URL=http://10.10.0.3:8111
-        - AGENT_NAME=regular_agent
+        - AGENT_NAME=workspace_docker
       network_mode: "host"
+
+  grafana:
+    image: grafana/grafana
+    user: "104"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - ./grafana/config.monitoring
+    network_mode: "host"
+
+  cadvisor:
+    image: google/cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: always
+    network_mode: "host"
+
+  alertmanager:
+    image: prom/alertmanager
+    network_mode: "host"
+    restart: always
+    volumes:
+      - ./alertmanager/:/etc/alertmanager/
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+
+  prometheus:
+    image: prom/prometheus:v2.1.0
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    depends_on:
+      - cadvisor
+      - alertmanager
+    restart: always
+    network_mode: "host"
+
+  node-exporter:
+    image: prom/node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    network_mode: "host"
+    restart: always
