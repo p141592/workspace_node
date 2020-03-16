@@ -19,7 +19,7 @@ services:
   
   nexus:
       restart: always
-      image: sonatype/nexus
+      image: sonatype/nexus3
       volumes:
         - nexus-data:/sonatype-work
       env_file: 
