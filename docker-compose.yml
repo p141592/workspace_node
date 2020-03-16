@@ -5,6 +5,7 @@ volumes:
   prometheus_data: {}
   gitlab_data: {}
   teamcity_data: {}
+  nexus-data: {}
 
 services:
   gitlab:
@@ -20,7 +21,7 @@ services:
       restart: always
       image: sonatype/nexus
       volumes:
-        - "/opt/nexus/:/sonatype-work"
+        - nexus-data:/sonatype-work
       env_file: 
         ./nexus/env
       network_mode: "host"
