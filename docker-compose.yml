@@ -10,7 +10,9 @@ volumes:
 services:
   gitlab:
       restart: always
-      image: sameersbn/gitlab:12.7.7
+      build: 
+        dockerfile: gitlab/Dockerfile
+        context: gitlab
       env_file: 
         ./gitlab/env
       volumes:
