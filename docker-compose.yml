@@ -13,10 +13,10 @@ services:
     restart: always
     environment:
       GITLAB_OMNIBUS_CONFIG: |
-        external_url 'http://gitlab.example.com:8002'
+        external_url 'http://gitlab.k0d.ru'
         gitlab_rails['gitlab_shell_ssh_port'] = 2223
     ports:
-      - '8002:8002'
+      - '80:80'
       - '2223:2223'
     volumes:
       - './gitlab/config:/etc/gitlab'
