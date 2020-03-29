@@ -9,15 +9,19 @@ volumes:
 
 services:
   gitlab:
-      restart: always
-      build: 
-        dockerfile: gitlab/Dockerfile
-        context: gitlab
-      env_file: 
-        ./gitlab/env
-      volumes:
-        - gitlab_data:/home/git/data:Z
-      network_mode: "host"
+    image: gitlab/gitlab-ce:latest
+    restart: always
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.example.com:8002'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2223
+    ports:
+      - '8002:8002'
+      - '2223:2223'
+    volumes:
+      - './gitlab/config:/etc/gitlab'
+      - '/var/logs/gitlab/:/var/log/gitlab'
+      - 'gitlab_data:/var/opt/gitlab'
   
   nexus:
       restart: always

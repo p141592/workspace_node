@@ -43,7 +43,9 @@ RUN rm -rf /usr/local/go
 RUN curl --remote-name https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz && \
 echo '512103d7ad296467814a6e3f635631bd35574cab3369a97a323c9a585ccaa569  go1.13.5.linux-amd64.tar.gz' | shasum -a256 -c - && \
 tar -C /usr/local -xzf go1.13.5.linux-amd64.tar.gz && \
-ln -sf /usr/local/go/bin/{go,godoc,gofmt} /usr/local/bin/ && \
+ln -s /usr/local/go/bin/go /usr/bin/ && \
+ln -s /usr/local/go/bin/godoc /usr/bin/ && \
+ln -s /usr/local/go/bin/gofmt /usr/bin/ && \
 rm go1.13.5.linux-amd64.tar.gz
 
 # == Node
@@ -59,26 +61,32 @@ RUN git clone https://gitlab.com/gitlab-org/gitlab-foss.git -b 12-9-stable /opt/
 
 WORKDIR /opt/git/gitlab
 
+# Gems
+RUN bundle install --deployment --without development test mysql aws kerberos
+
 USER root
 COPY ./config/ /opt/git/gitlab/config/
 RUN chown -R git:git /opt/git/gitlab/config/
+
 # Установка прав
 RUN chmod 0600 config/secrets.yml && chown -R git log/ && chown -R git tmp/ && \
 chmod -R u+rwX,go-w log/ && chmod -R u+rwX tmp/ && chmod -R u+rwX tmp/pids/ && \
 chmod -R u+rwX tmp/sockets/ && mkdir -p public/uploads/ && chmod 0700 public/uploads && \
 chmod -R u+rwX builds/ && chmod -R u+rwX shared/artifacts/ && chmod -R ug+rwX shared/pages/ && \
 chmod o-rwx config/database.yml
+RUN ln -s /usr/local/bin/git /usr/bin/git
 
 # Настройка git
+USER git
 RUN git config --global core.autocrlf input && \
 git config --global gc.auto 0 && \
 git config --global repack.writeBitmaps true && \
 git config --global receive.advertisePushOptions true && \
 git config --global core.fsyncObjectFiles true
 
+FROM base as project
 USER git
-# Gems
-RUN bundle install --deployment --without development test mysql aws kerberos
+WORKDIR /opt/git/gitlab
 
 # GitLab Shell
 RUN bundle exec rake gitlab:shell:install REDIS_URL=redis://10.10.0.3:6379 RAILS_ENV=production SKIP_STORAGE_VALIDATION=true
@@ -99,4 +107,13 @@ WORKDIR /opt/git/gitlab/
 RUN bundle exec rake "gitlab:gitaly:install[/opt/git/gitaly,/opt/git/repositories]" RAILS_ENV=production
 RUN chmod 0700 /opt/git/gitlab/tmp/sockets/private && chown git /opt/git/gitlab/tmp/sockets/private
 
-# Поправить конфига
+# Start service
+USER root
+RUN cp lib/support/init.d/gitlab /etc/init.d/gitlab
+RUN update-rc.d gitlab defaults 21
+RUN cp lib/support/logrotate/gitlab /etc/logrotate.d/gitlab
+
+# Init assets
+USER git
+RUN bundle exec rake gettext:compile RAILS_ENV=production
+RUN yarn install --production --pure-lockfile

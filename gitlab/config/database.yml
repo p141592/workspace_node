@@ -8,4 +8,4 @@ production:
   pool: 10
   username: git
   password: "secure password"
-  host: 10.10.0.2
+  host: 10.10.0.3
