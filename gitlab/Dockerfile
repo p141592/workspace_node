@@ -6,11 +6,10 @@ RUN update-alternatives --set editor /usr/bin/vim.basic
 RUN apt-get install -y build-essential zlib1g-dev libyaml-dev libssl-dev libgdbm-dev libre2-dev \
 libreadline-dev libncurses5-dev libffi-dev curl openssh-server checkinstall libxml2-dev \
 libxslt-dev libcurl4-openssl-dev libicu-dev logrotate rsync python-docutils pkg-config cmake \
-runit postgresql-client libpq-dev
+runit postgresql-client libpq-dev tzdata libcurl4-openssl-dev libexpat1-dev gettext libz-dev libssl-dev build-essential \
+graphicsmagick postfix
 
-RUN apt-get install -y libkrb5-dev
 RUN apt-get remove git-core
-RUN apt-get install -y libcurl4-openssl-dev libexpat1-dev gettext libz-dev libssl-dev build-essential
 
 RUN curl --silent --show-error --location https://ftp.pcre.org/pub/pcre/pcre2-10.33.tar.gz --output pcre2.tar.gz && \
 tar -xzf pcre2.tar.gz && \
@@ -20,15 +19,13 @@ chmod +x configure && \
 make && \
 make install
 
+# == Git
 RUN cd /tmp && \
 curl --remote-name --location https://www.kernel.org/pub/software/scm/git/git-2.24.1.tar.gz && \
 echo 'ad5334956301c86841eb1e5b1bb20884a6bad89a10a6762c958220c7cf64da02  git-2.24.1.tar.gz' | shasum -a256 -c - && tar -xzf git-2.24.1.tar.gz && \
 cd git-2.24.1/ && \
 ./configure --with-libpcre && \
 make prefix=/usr/local all && make prefix=/usr/local install
-
-RUN apt-get install -y graphicsmagick
-RUN apt-get install -y postfix
 
 # == Ruby
 RUN apt-get remove ruby1.8
@@ -62,8 +59,9 @@ RUN git clone https://gitlab.com/gitlab-org/gitlab-foss.git -b 12-9-stable /opt/
 
 WORKDIR /opt/git/gitlab
 
-COPY config/ config/
 USER root
+COPY ./config/ /opt/git/gitlab/config/
+RUN chown -R git:git /opt/git/gitlab/config/
 # Установка прав
 RUN chmod 0600 config/secrets.yml && chown -R git log/ && chown -R git tmp/ && \
 chmod -R u+rwX,go-w log/ && chmod -R u+rwX tmp/ && chmod -R u+rwX tmp/pids/ && \
@@ -78,11 +76,12 @@ git config --global repack.writeBitmaps true && \
 git config --global receive.advertisePushOptions true && \
 git config --global core.fsyncObjectFiles true
 
+USER git
 # Gems
 RUN bundle install --deployment --without development test mysql aws kerberos
 
 # GitLab Shell
-RUN bundle exec rake gitlab:shell:install REDIS_URL=http://redis RAILS_ENV=production SKIP_STORAGE_VALIDATION=true
+RUN bundle exec rake gitlab:shell:install REDIS_URL=redis://10.10.0.3:6379 RAILS_ENV=production SKIP_STORAGE_VALIDATION=true
 
 # Workhorse
 RUN bundle exec rake "gitlab:workhorse:install[/opt/git/gitlab-workhorse]" RAILS_ENV=production
@@ -98,7 +97,6 @@ RUN git checkout v$(</opt/git/gitlab/GITLAB_PAGES_VERSION) && make
 # Gitaly
 WORKDIR /opt/git/gitlab/
 RUN bundle exec rake "gitlab:gitaly:install[/opt/git/gitaly,/opt/git/repositories]" RAILS_ENV=production
-RUN chmod 0700 /opt/git/gitlab/tmp/sockets/private
-RUN chown git /opt/git/gitlab/tmp/sockets/private
+RUN chmod 0700 /opt/git/gitlab/tmp/sockets/private && chown git /opt/git/gitlab/tmp/sockets/private
 
 # Поправить конфига
